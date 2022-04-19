@@ -1,4 +1,5 @@
 import csv
+from random import gauss
 import networkx as nx
 import matplotlib.pyplot as plt
 # import cartopy as ccrs
@@ -70,8 +71,8 @@ miny = min(my)
 #     if minx < mx[i]: minx = mx[i]
 #     if miny < my[i]: miny = my[i]
 
-# GSF = 122500 #100km squares
-GSF = 60000 #50km squares
+GSF = 122500 #100km squares
+# GSF = 60000 #50km squares
 w, h = int((maxx - minx)/GSF)+1, int((maxy - miny)/GSF)+1
 print(f'width is {w} and height is {h}')
 matrix = [[0 for x in range(w)] for y in range(h)] 
@@ -123,10 +124,10 @@ for i in range(h):
             c = (0, min(1, matrix[i][j]/(sum(cellcount)/len(cellcount))), 0.5)
             g.add_node((i,j), pos=(j,i), color=c)
             if(i+1 < h and matrix[i+1][j] > 0):
-                g.add_node((i+1,j), pos=(i+1,j), color=c)
+                g.add_node((i+1,j), pos=(j,i+1), color=c)
                 g.add_edge((i,j), (i+1, j))
             if(j+1 < w and matrix[i][j+1] > 0):
-                g.add_node((i,j+1), pos=(i,j+1), color=c)
+                g.add_node((i,j+1), pos=(j+1,i), color=c)
                 g.add_edge((i,j), (i, j+1))
         # print(f'{matrix[i][j]} ', end='')
     # print('')
@@ -137,6 +138,7 @@ colors = list(nx.get_node_attributes(g, 'color').values())
 nx.draw(g, node_size=50, pos=pos, node_color='lightgreen')
 CC = sorted(nx.connected_components(g), key=len, reverse=True)
 
+# draw red/blue graph
 GCC = g.subgraph(CC[0])
 nx.draw(GCC, node_size=50, pos=pos)
 GCC2 = g.subgraph(CC[1])
@@ -156,36 +158,103 @@ def addNode(graph, x, y):
         gcopy.add_edge((x,y), (x, y+1))
     return gcopy
 
+def getGCC(graph):
+    cc = sorted(nx.connected_components(graph), key=len, reverse=True)
+    gcc = graph.subgraph(cc[0])
+    return gcc
+
 # Returns the biggest 
 def getBiggerGCC(g, h):
-    cc = sorted(nx.connected_components(g), key=len, reverse=True)
-    gcc = g.subgraph(cc[0])
-    cc = sorted(nx.connected_components(h), key=len, reverse=True)
-    hcc = h.subgraph(cc[0])
+    gcc = getGCC(g)
+    hcc = getGCC(h)
     ret = max(gcc, hcc, key=len)
     return ret
 
-biggestGCC = nx.complete_graph(1)
-for x in range(h):
-    for y in range(w):
-        if(matrix[x][y] == 0): #if this spot is empty...
-            if((x+1 < h and matrix[x+1][y] > 0) or
-                (x-1 >= 0 and matrix[x-1][y] > 0) or
-                (y+1 < w and matrix[x][y+1] > 0) or 
-                (y-1 >= 0 and matrix[x][y-1] > 0)): #if empty spot has at least 1 live neighbour...
-                    test = addNode(g, x, y)
-                    biggestGCC = getBiggerGCC(biggestGCC, test)
+# Does expansion of the GCC on graph g
+def expandGCC(g):
+    locationOfAdded = (0, 0)
+    biggestGCC = nx.complete_graph(1)
+    newGCC = nx.complete_graph(1)
+    for x in range(h):
+        for y in range(w):
+            if(matrix[x][y] == 0): #if this spot is empty...
+                if((x+1 < h and matrix[x+1][y] > 0) or
+                    (x-1 >= 0 and matrix[x-1][y] > 0) or
+                    (y+1 < w and matrix[x][y+1] > 0) or 
+                    (y-1 >= 0 and matrix[x][y-1] > 0)): #if empty spot has at least 1 live neighbour...
+                        test = addNode(g, x, y)
+                        newGCC = getBiggerGCC(biggestGCC, test)
+                        if biggestGCC.number_of_nodes() < newGCC.number_of_nodes():
+                            locationOfAdded = (y, x)
+                            biggestGCC = newGCC
 
-plt.figure()
-nx.draw(g, node_size=50, pos=pos, node_color='lightgreen')
-biggestGCCpos = nx.get_node_attributes(biggestGCC, 'pos')
-nx.draw(biggestGCC, node_size=50, pos=biggestGCCpos, node_color='red')
-nx.draw(GCC, node_size=50, node_color='blue', pos=pos)
+    print(f'original GCC was {GCC}')
+    print(f'new biggest is {biggestGCC}')
 
+    print(f'location of added node is {locationOfAdded}')
+    bestLon, bestLat = map(locationOfAdded[0] * GSF, locationOfAdded[1] * GSF, inverse=True)
+    print(f'best spot is {bestLat}, {bestLon}')
+
+    # draw best spot for new node
+    plt.figure()
+    nx.draw(g, node_size=50, pos=pos, node_color='lightgreen')
+    biggestGCCpos = nx.get_node_attributes(biggestGCC, 'pos')
+    nx.draw(biggestGCC, node_size=50, pos=biggestGCCpos, node_color='red')
+    nx.draw(GCC, node_size=50, node_color='blue', pos=pos)
+
+# expandGCC(g)
+
+def getCloseness(g):
+    d = nx.closeness_centrality(getGCC(g))
+    avg = sum(d.values())/len(d)
+    return avg
+
+# Problem 2
+def improveCloseness(graph):
+    locationOfAdded = (0, 0)
+    bestCloseness = 0
+    newCloseness = 0
+    # for x in range(h):
+    #     for y in range(w):
+    #         if(matrix[x][y] == 0): #if this spot is empty...
+    #             if((x+1 < h and matrix[x+1][y] > 0) or
+    #                 (x-1 >= 0 and matrix[x-1][y] > 0) or
+    #                 (y+1 < w and matrix[x][y+1] > 0) or 
+    #                 (y-1 >= 0 and matrix[x][y-1] > 0)): #if empty spot has at least 1 live neighbour...
+    #                     print(f'testing node {x},{y}')
+    #                     test = addNode(graph, x, y)
+    #                     newCloseness = getCloseness(test)
+    #                     if newCloseness > bestCloseness:
+    #                         locationOfAdded = (y, x)
+    #                         bestCloseness = newCloseness
+    locationOfAdded = (64, 26)
+    
+    print(f'original closeness is {getCloseness(graph)}')
+    print(f'new best closeness is {bestCloseness}')
+
+    print(f'location of added node is {locationOfAdded}')
+    bestLon, bestLat = map(locationOfAdded[0] * GSF, locationOfAdded[1] * GSF, inverse=True)
+    print(f'best spot is {bestLat}, {bestLon}')
+
+    # draw best spot for new node
+    plt.figure()
+    newGraph = addNode(graph, locationOfAdded[1], locationOfAdded[0])
+    newGraphPos = nx.get_node_attributes(newGraph, 'pos')
+    nx.draw(newGraph, node_size=50, node_color='blue', pos=newGraphPos)
+    nx.draw(graph, node_size=50, pos=pos, node_color='lightgreen')
+    gcc = getGCC(graph)
+    gccpos = nx.get_node_attributes(gcc, 'pos')
+    nx.draw(gcc, node_size=50, pos=gccpos, node_color='red')
+
+
+                
+improveCloseness(g)
+
+# heatmap
 plt.figure()
 nx.draw(g, node_size=50, pos=pos, node_color=colors)
 
-
+# basemap plot
 plt.figure()
 map.drawcoastlines(linewidth=0.25)
 map.drawcountries(linewidth=0.25)
