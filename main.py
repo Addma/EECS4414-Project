@@ -7,7 +7,8 @@ from mpl_toolkits.basemap import Basemap
 from vincenty import vincenty
 import numpy as np
 import networkx as nx
-
+import math
+from collections import deque as queue
 latitude_index = None
 longitude_index = None
 lats, lons = [],[]
@@ -190,7 +191,7 @@ def expandGCC(g):
 
     print(f'original GCC was {GCC}')
     print(f'new biggest is {biggestGCC}')
-
+    
     print(f'location of added node is {locationOfAdded}')
     bestLon, bestLat = map(locationOfAdded[0] * GSF, locationOfAdded[1] * GSF, inverse=True)
     print(f'best spot is {bestLat}, {bestLon}')
@@ -246,9 +247,82 @@ def improveCloseness(graph):
     gccpos = nx.get_node_attributes(gcc, 'pos')
     nx.draw(gcc, node_size=50, pos=gccpos, node_color='red')
 
+#Experiment BFS CCs
 
+#Gets the distance between two points on 2-D array
+def getPointDist(p1, p2): 
+    dist = math.sqrt(abs(((p2[1]-p1[1])**2) + ((p2[0]-p1[0])**2)))
+    return dist
+#Finds the two closest points between 2 input connected components
+def findMinDistPoints(CC1, CC2):
+    curdist = getPointDist((0,0), (w, h))
+    p1 = None
+    p2 = None
+    for i in CC1:
+        for j in CC2:
+            temp = getPointDist(i, j)
+            if temp < curdist:
+                curdist = temp
+                p1 = i
+                p2 = j
+    return ((p1, p2), curdist)
+#CHecks if a point on the matrix is a valid point
+def isValid(visited, point):
+    if (point[0] < 0 or point[1] < 0 or point[0] >= w or point[1] >= h):
+        return False
+    if (visited[point[0]][point[1]]):
+        return False
+    return True
+# Searches for shortest path between start and end points on 2-D grid
+def BFSgrid(start, end, visited):
+    dRow = [-1, 0, 1, 0]
+    dCol = [0, 1, 0, -1]
+    q = queue()
+    q.append((start[0], start[1]))
+    visited[start[0]][start[1]] = True
+    iter = 0
+    res = []
+    while (len(q) > 0):
+        iter +=1
+        cell = q.popleft()
+        res.append(cell)
+        x = cell[0]
+        y = cell[1]
+        print(matrix[x][y], "MATRIX")
+        for i in range(4):
+            adjx = x + dRow[i]
+            adjy = y + dCol[i]
+            if (isValid(visited, (adjx, adjy))):
+                q.append((adjx, adjy))
+                visited[adjx][adjy] = True
+            if (adjx, adjy) == end: #If we reach the end node, we finish and return the resulting list path.
+                print("DONE", iter)
+                break
+    return res
+# Finds the nearest CC for each, and finds the two points that are closest
+def getAllShortestPointsBetweenCCs(CC):
+    closest = {}
+    CC = list(CC)
+    closestDist = (getPointDist((0,0), (w,h)), 0)
+    for i, elem in enumerate(CC):
+        CC1 = list(elem)
+        closestPoint = None
+        closestDist = (getPointDist((0,0), (w,h)), 0)
+        for j, ele in enumerate(CC):
+            if (j == i):
+                continue
+            CC2 = list(ele)
+            res = findMinDistPoints(CC1, CC2)
+            temppoints = res[0]
+            tempdist = res[1]
+            if closestDist[0] > tempdist:
+                closestDist = (tempdist, j)
+                closestPoint = temppoints
+        closest[i] = (closestPoint, closestDist[1])
                 
 improveCloseness(g)
+GCC2 = expandGCC(g)
+
 
 # heatmap
 plt.figure()
