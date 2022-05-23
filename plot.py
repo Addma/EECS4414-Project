@@ -13,8 +13,8 @@ import haversine as hs
 file = open('./ev_stations.csv', encoding='utf-8')
 
 csvreader = csv.reader(file)
-APIkeyGoogle = "AIzaSyD6AHTjGsOAZEiQCGnHY-2xysWFmQjPjtM"
-APIkeyBing = "At2ioRmDqk1dOlhUJWyPqLTJbFlT7b58k97kRT6B7_HRNXaMAJStS-IgN167LVjK"
+APIkeyGoogle = ""
+APIkeyBing = ""
 header = []
 header = next(csvreader)
 rows = []
