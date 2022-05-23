@@ -17,7 +17,7 @@ import time
 
 names = ('Latitude,Longitude,''State').split(',')
 df = pd.read_csv('./ev_stations.csv', dtype='unicode')
-APIkeyBing = "At2ioRmDqk1dOlhUJWyPqLTJbFlT7b58k97kRT6B7_HRNXaMAJStS-IgN167LVjK"
+APIkeyBing = ""
 CAlatLng = [37.23585350702396, -119.87477641547004]
 AKlatlng = [65.91557839885878, -150.94801773210332]
 USAlatlng = [38.9137131047308, -101.62419014841949]
