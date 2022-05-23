@@ -6,7 +6,7 @@ import requests
 file = open('./ev_stations_v1.csv', encoding='utf-8')
 
 csvreader = csv.reader(file)
-APIkey = "AIzaSyD6AHTjGsOAZEiQCGnHY-2xysWFmQjPjtM"
+APIkey = ""
 header = []
 header = next(csvreader)
 print(header)
